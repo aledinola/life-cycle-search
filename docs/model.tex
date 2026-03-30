@@ -1,0 +1,295 @@
+%\input{tcilatex}
+
+
+\documentclass[11pt]{article}
+\usepackage{amsfonts}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\setcounter{MaxMatrixCols}{10}
+%TCIDATA{OutputFilter=Latex.dll}
+%TCIDATA{Version=5.50.0.2953}
+%TCIDATA{<META NAME="SaveForMode" CONTENT="1">}
+%TCIDATA{BibliographyScheme=Manual}
+%TCIDATA{LastRevised=Saturday, March 28, 2026 16:15:39}
+%TCIDATA{<META NAME="GraphicsSave" CONTENT="32">}
+
+%\input{tcilatex}
+
+\begin{document}
+
+\title{Life-cycle model with search frictions and skills}
+\author{}
+\date{\today}
+\maketitle
+
+\section{Model}
+
+An individual is characterized by assets $a\geq 0$, employment status
+$\ell \in \{0,1\}$, skill level
+$g\in \{\bar{g}_{1},\ldots ,\bar{g}_{n_{g}}\}$, age
+$j\in \{1,\ldots ,J\}$, and a fixed education type
+$i\in \mathcal{I}\equiv \{\text{low},\text{high}\}$. Here $\ell =0$ denotes
+unemployment and $\ell =1$ denotes employment. Retirement begins at age
+$J_{R}$.
+
+Education affects the environment through two type-specific objects:
+$\phi_i>0$, an income shifter, and $\sigma_i\in (0,1)$, the job-separation
+probability while employed. We assume $\sigma_{\text{low}}>
+\sigma_{\text{high}}$, so higher-education individuals face a lower risk of
+job loss.
+
+At each age, the individual chooses next-period assets $a^{\prime }\geq 0$
+and search effort $s\geq 0$. Search effort matters only while the agent is
+unemployed and of working age, that is, when $\ell =0$ and $j<J_{R}$.
+
+For all ages $j\leq J$, the Bellman equation is
+\begin{equation*}
+V_{i}(a,\ell ,g,j)=\max_{a^{\prime }\geq 0,\,s\geq 0}\left\{
+u(c)-\kappa (s)+\beta \sum_{\ell ^{\prime }\in \{0,1\}}
+\sum_{g^{\prime }\in \mathcal{G}}V_{i}(a^{\prime },\ell ^{\prime },g^{\prime
+},j+1)\,\pi _{\ell }(\ell ,\ell ^{\prime }\mid s,i)\,\pi
+_{g}(g,g^{\prime }\mid \ell ,j)\right\} ,
+\end{equation*}%
+where $\mathcal{G}=\{\bar{g}_{1},\ldots ,\bar{g}_{n_g}\}$, with terminal condition
+\begin{equation*}
+V_{i}(a,\ell ,g,J+1)=0.
+\end{equation*}
+Associated policy functions for next-period assets and search effort are
+\begin{equation*}
+Pol_{a^{\prime }}(a,\ell ,g,j,i), \qquad Pol_{s}(a,\ell ,g,j,i).
+\end{equation*}
+
+The period budget constraint is
+\begin{equation*}
+\left\{
+\begin{array}{ll}
+c+a^{\prime }=(1+r)a+\phi_i\left[w\,g\,\mathbb{I}_{\{\ell =1\}}+b\,\mathbb{I}
+_{\{\ell =0\}}\right], & j<J_{R}, \\ 
+c+a^{\prime }=(1+r)a+\phi_i\,pen, & j\geq J_{R}.%
+\end{array}%
+\right.
+\end{equation*}%
+Thus, at working ages labor income equals $\phi_iwg$ when employed and
+$\phi_i b$ when unemployed, while retirees receive pension income
+$\phi_i pen$. Feasible choices must satisfy $c>0$.
+
+Period utility is
+\begin{equation*}
+u(c)=\frac{c^{1-\gamma}}{1-\gamma}, \qquad \kappa(s)=B_s s.
+\end{equation*}
+Since $\kappa(s)$ is strictly increasing, the optimal choice in all states in
+which search brings no benefit is the lowest feasible effort, namely $s=0$.
+In particular, search is irrelevant while employed and after retirement, when
+employment status no longer affects payoffs. Likewise, after retirement the
+payoff function no longer depends on $\ell$ or $g$, but we still keep those
+variables in the state vector to maintain a uniform recursive formulation and
+to match the Matlab implementation.
+
+Employment transitions at working ages depend on search effort:
+\begin{equation*}
+\pi _{\ell }(\ell ,\ell ^{\prime }\mid s,i)=%
+\begin{bmatrix}
+& \ell ^{\prime }=0 & \ell ^{\prime }=1 \\ 
+\ell =0 & 1-\pi ^{s}(s) & \pi ^{s}(s) \\ 
+\ell =1 & \sigma _i & 1-\sigma _i%
+\end{bmatrix}%
+.
+\end{equation*}%
+An unemployed worker finds a job with probability $\pi ^{s}(s)$, while an
+employed worker loses the job with probability $\sigma_i$. This matrix is
+well defined provided $\pi^s(s)\in [0,1]$.
+
+Skill transitions depend on current employment status. A simple three-state
+illustration is
+\begin{equation*}
+\pi _{g}(g,g^{\prime }\mid \ell =0,j)=%
+\begin{bmatrix}
+& g^{\prime }=\bar{g}_{1} & g^{\prime }=\bar{g}_{2} & g^{\prime }=\bar{g}_{3}
+\\ 
+g=\bar{g}_{1} & 1 & 0 & 0 \\ 
+g=\bar{g}_{2} & 1-p_{0} & p_{0} & 0 \\ 
+g=\bar{g}_{3} & 0 & 1-p_{0} & p_{0}%
+\end{bmatrix}%
+,
+\end{equation*}%
+and
+\begin{equation*}
+\pi _{g}(g,g^{\prime }\mid \ell =1,j)=%
+\begin{bmatrix}
+& g^{\prime }=\bar{g}_{1} & g^{\prime }=\bar{g}_{2} & g^{\prime }=\bar{g}_{3}
+\\ 
+g=\bar{g}_{1} & p_{1}^{j} & 1-p_{1}^{j} & 0 \\ 
+g=\bar{g}_{2} & 0 & p_{1}^{j} & 1-p_{1}^{j} \\ 
+g=\bar{g}_{3} & 0 & 0 & 1%
+\end{bmatrix}%
+.
+\end{equation*}%
+Under this ladder structure, unemployment weakly depreciates skills, while
+employment weakly improves them. To make the matrices stochastic, one needs
+$p_0\in [0,1]$ and $p_1^j\in [0,1]$ for every age $j$. The age index in
+$p_{1}^{j}$ allows skill accumulation to vary over the life cycle, for
+example by making it stronger at younger ages. 
+
+\subsection{Distribution}
+
+Let $\varpi_i$ denote the fixed population share of permanent education type
+$i\in \mathcal{I}$, with $\sum_{i\in \mathcal{I}}\varpi_i=1$. Let
+$m_j\geq 0$ denote the cross-sectional age-mass profile, with
+$\sum_{j=1}^{J}m_j=1$. In the code this object is stored as
+$m_j=Params.mewj(j)$. The current application sets $m_j=1/J$ for all $j$,
+but the formulation allows for a general age distribution, for example one
+generated by survival risk. Let $\tilde{\mu}(a,\ell,g,j,i)$ denote the
+distribution over $(a,\ell,g,i)$ within age $j$, before applying the
+cross-sectional age weights, and let $\mu(a,\ell,g,j,i)$ denote the joint
+cross-sectional distribution. These objects are related by
+\begin{equation*}
+\mu(a,\ell,g,j,i)=m_j\,\tilde{\mu}(a,\ell,g,j,i).
+\end{equation*}
+Because permanent type is fixed over the life cycle, both distributions keep
+track of $i$ explicitly rather than integrating it out. After retirement, the
+distribution still carries $\ell$ and $g$, even though they are
+payoff-irrelevant, in order to preserve the same state-space representation
+at all ages.
+
+Given these policy functions, the within-age distribution evolves according
+to
+\begin{eqnarray*}
+\tilde{\mu}(a^{\prime},\ell^{\prime},g^{\prime},j+1,i)
+&=& \sum_{a,\ell,g}\tilde{\mu}(a,\ell,g,j,i)\,
+\mathbb{I}\left\{a^{\prime}=Pol_{a^{\prime}}(a,\ell,g,j,i)\right\} \\
+&&\times \pi_{\ell}(\ell,\ell^{\prime}\mid Pol_s(a,\ell,g,j,i),i)\,
+\pi_g(g,g^{\prime}\mid \ell,j),
+\end{eqnarray*}%
+for $j=1,\ldots,J-1$.
+Equivalently, the cross-sectional distribution satisfies
+\begin{eqnarray*}
+\mu(a^{\prime},\ell^{\prime},g^{\prime},j+1,i)
+&=& \frac{m_{j+1}}{m_j}\sum_{a,\ell,g}\mu(a,\ell,g,j,i)\,
+\mathbb{I}\left\{a^{\prime}=Pol_{a^{\prime}}(a,\ell,g,j,i)\right\} \\
+&&\times \pi_{\ell}(\ell,\ell^{\prime}\mid Pol_s(a,\ell,g,j,i),i)\,
+\pi_g(g,g^{\prime}\mid \ell,j),
+\end{eqnarray*}%
+whenever $m_j>0$.
+
+Let $g_0\in \mathcal{G}$ denote the median skill level. The initial
+within-age distribution at age $j=1$ is given by
+\begin{equation*}
+\tilde{\mu}(a,\ell,g,1,i)=\varpi_i\,\mathbb{I}\left\{a=0\right\}
+\mathbb{I}\left\{\ell=0\right\}\mathbb{I}\left\{g=g_0\right\},
+\end{equation*}%
+so all newborn agents start with zero assets, unemployed, and at the median
+skill level $g_0$, while permanent types are distributed according to
+$\varpi_i$. Therefore the age-$1$ cross-sectional distribution is
+\begin{equation*}
+\mu(a,\ell,g,1,i)=m_1\,\varpi_i\,\mathbb{I}\left\{a=0\right\}
+\mathbb{I}\left\{\ell=0\right\}\mathbb{I}\left\{g=g_0\right\}.
+\end{equation*}
+
+\subsection{Life-cycle profiles}
+
+Consider a generic variable
+$x=x(a,\ell,g,j,i)$ defined on the individual state space. Examples include
+assets, search effort, and employment status. Using the cross-sectional
+distribution $\mu(a,\ell,g,j,i)$, the average of $x$ conditional on age $j$
+is
+\begin{equation*}
+\mathbb{E}[x\mid j]
+=\frac{\sum_{i\in\mathcal{I}}\sum_{a,\ell,g}x(a,\ell,g,j,i)\,
+\mu(a,\ell,g,j,i)}
+{\sum_{i\in\mathcal{I}}\sum_{a,\ell,g}\mu(a,\ell,g,j,i)}.
+\end{equation*}
+Since $\mu$ is the joint cross-sectional distribution and the age mass at
+age $j$ is $m_j$, the denominator equals $m_j$. Hence one can also write
+\begin{equation*}
+\mathbb{E}[x\mid j]
+=\frac{1}{m_j}\sum_{i\in\mathcal{I}}\sum_{a,\ell,g}
+x(a,\ell,g,j,i)\,\mu(a,\ell,g,j,i).
+\end{equation*}
+
+If instead one wants the average conditional on both age $j$ and permanent
+type $i$, then
+\begin{equation*}
+\mathbb{E}[x\mid j,i]
+=\frac{\sum_{a,\ell,g}x(a,\ell,g,j,i)\,\mu(a,\ell,g,j,i)}
+{\sum_{a,\ell,g}\mu(a,\ell,g,j,i)}.
+\end{equation*}
+Because permanent type shares are fixed over the life cycle, the denominator
+is $m_j\varpi_i$, so equivalently
+\begin{equation*}
+\mathbb{E}[x\mid j,i]
+=\frac{1}{m_j\varpi_i}\sum_{a,\ell,g}
+x(a,\ell,g,j,i)\,\mu(a,\ell,g,j,i).
+\end{equation*}
+
+If one wants the average of $x$ conditional on age $j$ and employment
+status $\ell=0$, then
+\begin{equation*}
+\mathbb{E}[x\mid j,\ell=0]
+:=\frac{\sum_{i\in\mathcal{I}}\sum_{a,g}x(a,0,g,j,i)\,\mu(a,0,g,j,i)}
+{\sum_{i\in\mathcal{I}}\sum_{a,g}\mu(a,0,g,j,i)}.
+\end{equation*}
+Similarly, conditional on age $j$ and employment status $\ell=1$,
+\begin{equation*}
+\mathbb{E}[x\mid j,\ell=1]
+:=\frac{\sum_{i\in\mathcal{I}}\sum_{a,g}x(a,1,g,j,i)\,\mu(a,1,g,j,i)}
+{\sum_{i\in\mathcal{I}}\sum_{a,g}\mu(a,1,g,j,i)}.
+\end{equation*}
+More compactly, for any $\bar{\ell}\in\{0,1\}$,
+\begin{equation*}
+\mathbb{E}[x\mid j,\ell=\bar{\ell}]
+:=\frac{\sum_{i\in\mathcal{I}}\sum_{a,g}x(a,\bar{\ell},g,j,i)\,\mu(a,\bar{\ell},g,j,i)}
+{\sum_{i\in\mathcal{I}}\sum_{a,g}\mu(a,\bar{\ell},g,j,i)}.
+\end{equation*}
+
+Other moments by age, or jointly by age and permanent type, can be computed
+in exactly the same way by replacing $x$ with the relevant function of the
+state variables.
+
+\paragraph{Implementation note.}
+
+In the VFI Toolkit, this problem is implemented as a finite-horizon model
+with semi-exogenous states and no purely exogenous Markov state $z$. We
+define the semi-exogenous state as $semiz=(\ell ,g)$. The reason is that the
+employment transition depends on the decision variable $d=s$, while skill
+transitions depend on current employment status $\ell$. Hence $\ell$ is
+directly semi-exogenous, and $g$ is naturally treated as a second
+semi-exogenous state.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Variable & Description & Toolkit name \\
+\midrule
+$s$ & Search effort & $d$ \\
+$a^{\prime }$ & Next-period endogenous state & $aprime$ \\
+$a$ & Current endogenous state & $a$ \\
+$\ell$ & Employment state & $semiz1$ \\
+$g$ & Skill level & $semiz2$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In that notation, the relevant objects are the semi-exogenous grid
+$semiz\_grid\_J$ and the transition array $\pi _{semiz,J}$. In full
+generality these can be entered as multidimensional arrays:
+\begin{equation*}
+semiz\_grid\_J(semiz,j,ptype), \qquad \pi _{semiz,J}(semiz,semiz^{\prime },d,j,ptype).
+\end{equation*}
+If the semi-exogenous grid is the same for all ages and permanent types,
+however, it can be entered in stacked form as a column vector
+$semiz\_grid\_J(semiz)$ rather than as a joint grid. See the VFI Toolkit
+documentation or code for further details on this notation and data layout.
+
+\end{document}
