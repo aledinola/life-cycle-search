@@ -119,7 +119,7 @@ plot_i = 1;
 
 %% Solve with toolkit-based implementation
 start1 = tic;
-[V, pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i);
+[V, pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i);
 time1 = toc(start1);
 
 % Check: pol_s(a,l,g,j,ptype) must be zero if l=1 (employed), for all
@@ -135,7 +135,7 @@ start2 = tic;
 time2 = toc(start2);
 
 fprintf('Time method 1 (GPU Toolkit): %f \n',time1)
-fprintf('Time method 2 (GPU Toolkit): %f \n',time2)
+fprintf('Time method 2 (CPU)        : %f \n',time2)
 
 err_V = max(abs(V(:)-V2(:)));
 err_s = max(abs(pol_s(:)-pol_s2(:)));
@@ -178,6 +178,22 @@ err_agestats_l1_assets = max(abs(AgeStats.l1.assets.Mean(:)-AgeStats2.l1.assets.
 err_agestats_l0_skill = max(abs(AgeStats.l0.skill.Mean(:)-AgeStats2.l0.skill.Mean(:)));
 err_agestats_l1_skill = max(abs(AgeStats.l1.skill.Mean(:)-AgeStats2.l1.skill.Mean(:)));
 
+err_sim_assets_mean = max(abs(AgeStats.assets.Mean(:)-AgeStatsSim.assets.Mean(:)));
+err_sim_assets_next_mean = max(abs(AgeStats.assets_next.Mean(:)-AgeStatsSim.assets_next.Mean(:)));
+err_sim_search_mean = max(abs(AgeStats.search.Mean(:)-AgeStatsSim.search.Mean(:)));
+err_sim_empl_mean = max(abs(AgeStats.empl.Mean(:)-AgeStatsSim.empl.Mean(:)));
+err_sim_skill_mean = max(abs(AgeStats.skill.Mean(:)-AgeStatsSim.skill.Mean(:)));
+err_sim_assets_ptype001 = max(abs(AgeStats.assets.ptype001.Mean(:)-AgeStatsSim.assets.ptype001.Mean(:)));
+err_sim_assets_ptype002 = max(abs(AgeStats.assets.ptype002.Mean(:)-AgeStatsSim.assets.ptype002.Mean(:)));
+err_sim_assets_next_ptype001 = max(abs(AgeStats.assets_next.ptype001.Mean(:)-AgeStatsSim.assets_next.ptype001.Mean(:)));
+err_sim_assets_next_ptype002 = max(abs(AgeStats.assets_next.ptype002.Mean(:)-AgeStatsSim.assets_next.ptype002.Mean(:)));
+err_sim_search_ptype001 = max(abs(AgeStats.search.ptype001.Mean(:)-AgeStatsSim.search.ptype001.Mean(:)));
+err_sim_search_ptype002 = max(abs(AgeStats.search.ptype002.Mean(:)-AgeStatsSim.search.ptype002.Mean(:)));
+err_sim_empl_ptype001 = max(abs(AgeStats.empl.ptype001.Mean(:)-AgeStatsSim.empl.ptype001.Mean(:)));
+err_sim_empl_ptype002 = max(abs(AgeStats.empl.ptype002.Mean(:)-AgeStatsSim.empl.ptype002.Mean(:)));
+err_sim_skill_ptype001 = max(abs(AgeStats.skill.ptype001.Mean(:)-AgeStatsSim.skill.ptype001.Mean(:)));
+err_sim_skill_ptype002 = max(abs(AgeStats.skill.ptype002.Mean(:)-AgeStatsSim.skill.ptype002.Mean(:)));
+
 fprintf('err_V:        %f \n',err_V)
 fprintf('err_s:        %f \n',err_s)
 fprintf('err_aprime:   %f \n',err_aprime)
@@ -218,6 +234,21 @@ fprintf('err_agestats_l0_assets:       %f \n',err_agestats_l0_assets)
 fprintf('err_agestats_l1_assets:       %f \n',err_agestats_l1_assets)
 fprintf('err_agestats_l0_skill:        %f \n',err_agestats_l0_skill)
 fprintf('err_agestats_l1_skill:        %f \n',err_agestats_l1_skill)
+fprintf('err_sim_assets_mean:          %f \n',err_sim_assets_mean)
+fprintf('err_sim_assets_next_mean:     %f \n',err_sim_assets_next_mean)
+fprintf('err_sim_search_mean:          %f \n',err_sim_search_mean)
+fprintf('err_sim_empl_mean:            %f \n',err_sim_empl_mean)
+fprintf('err_sim_skill_mean:           %f \n',err_sim_skill_mean)
+fprintf('err_sim_assets_ptype001:      %f \n',err_sim_assets_ptype001)
+fprintf('err_sim_assets_ptype002:      %f \n',err_sim_assets_ptype002)
+fprintf('err_sim_assets_next_ptype001: %f \n',err_sim_assets_next_ptype001)
+fprintf('err_sim_assets_next_ptype002: %f \n',err_sim_assets_next_ptype002)
+fprintf('err_sim_search_ptype001:      %f \n',err_sim_search_ptype001)
+fprintf('err_sim_search_ptype002:      %f \n',err_sim_search_ptype002)
+fprintf('err_sim_empl_ptype001:        %f \n',err_sim_empl_ptype001)
+fprintf('err_sim_empl_ptype002:        %f \n',err_sim_empl_ptype002)
+fprintf('err_sim_skill_ptype001:       %f \n',err_sim_skill_ptype001)
+fprintf('err_sim_skill_ptype002:       %f \n',err_sim_skill_ptype002)
 
 if max(err_s,err_aprime)>1e-10    
     error('Mistake')

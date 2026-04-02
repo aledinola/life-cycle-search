@@ -93,11 +93,11 @@ end
 StatDist = StatDist.*reshape(Params.mewj,1,1,1,N_j,1);
 
 %% Functions to evaluate
-FnsToEvaluate.assets = @(s,aprime,a,l,g) a;
+FnsToEvaluate.assets      = @(s,aprime,a,l,g) a;
 FnsToEvaluate.assets_next = @(s,aprime,a,l,g) aprime;
-FnsToEvaluate.search = @(s,aprime,a,l,g) s;
-FnsToEvaluate.empl = @(s,aprime,a,l,g) l;
-FnsToEvaluate.skill = @(s,aprime,a,l,g) g;
+FnsToEvaluate.search      = @(s,aprime,a,l,g) s;
+FnsToEvaluate.empl        = @(s,aprime,a,l,g) l;
+FnsToEvaluate.skill       = @(s,aprime,a,l,g) g;
 
 %% Calculate values on the state grid
 ValuesOnGrid = struct();
