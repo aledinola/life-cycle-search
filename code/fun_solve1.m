@@ -161,90 +161,12 @@ AgeStats=LifeCycleProfiles_FHorz_Case1_PType(StatDist,Policy,FnsToEvaluate,...
 %% Generate a simulated panel and from there life cycle profiles
 
 simoptions_panel = simoptions;
-simoptions_panel.semiz_grid = local_ptype_semiz_grid(vfoptions.semiz_grid,N_i);
-simoptions_panel.pi_semiz = local_ptype_pi_semiz(vfoptions.pi_semiz,N_i);
+simoptions_panel.semiz_grid = vfoptions.semiz_grid;
+simoptions_panel.pi_semiz = vfoptions.pi_semiz;
 simoptions_panel.alreadygridvals_semiexo = 0;
 simoptions_panel.numbersims = 5000;
 simoptions_panel.simperiods = N_j;
 SimPanelValues=SimPanelValues_FHorz_Case1_PType(jequaloneDist,PTypeDistName,Policy,FnsToEvaluate,Params,n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,pi_z,simoptions_panel);
-AgeStatsSim = local_panel_age_stats(SimPanelValues,Params.(PTypeDistName{1}),N_i);
-
-end %end function
-
-function semiz_grid_ptype = local_ptype_semiz_grid(semiz_grid,N_i)
-
-ptype_names = local_ptype_names(N_i);
-semiz_grid_ptype = struct();
-for ii=1:N_i
-    semiz_grid_ptype.(ptype_names{ii}) = semiz_grid(:,:,ii);
-end
-
-end %end function
-
-function pi_semiz_ptype = local_ptype_pi_semiz(pi_semiz,N_i)
-
-ptype_names = local_ptype_names(N_i);
-pi_semiz_ptype = struct();
-for ii=1:N_i
-    pi_semiz_ptype.(ptype_names{ii}) = pi_semiz(:,:,:,:,ii);
-end
-
-end %end function
-
-function AgeStatsSim = local_panel_age_stats(SimPanelValues,PTypeDist,N_i)
-% Purpose: This function takes as input SimPanelValues. Each field of SimPanelValues
-% is a panel dataset for a variable, so for example SimPanelValues.assets
-% is a [N_j,numbersims] matrix where 1st dim is simulated individuals and
-% 2nd dimension is age/time period. Hence to obtain a life cycle profile, 
-% we have to average over the 2nd dimension, omitting NaN values.   
-fn_names = fieldnames(SimPanelValues);
-ptype_names = local_ptype_names(N_i);
-ptype_counts = local_ptype_counts(PTypeDist,size(SimPanelValues.(fn_names{1}),2));
-
-AgeStatsSim = struct();
-for ff=1:numel(fn_names)
-    fn_name = fn_names{ff};
-    % values is [N_j,numbersims] 
-    values = SimPanelValues.(fn_name);
-    % AgeStatsSim.(fn_name).Mean is vector [N_j,1]
-    AgeStatsSim.(fn_name).Mean = mean(values,2,'omitnan')';
-    % convert to row vector to make it comformable to output of 
-    % LifeCycleProfiles_FHorz_Case1_PType
-
-    % The following is not very clear
-    start_idx = 1;
-    for ii=1:N_i
-        stop_idx = start_idx + ptype_counts(ii) - 1;
-        if ptype_counts(ii)>0
-            AgeStatsSim.(fn_name).(ptype_names{ii}).Mean = mean(values(:,start_idx:stop_idx),2,'omitnan')';
-        else
-            AgeStatsSim.(fn_name).(ptype_names{ii}).Mean = NaN(1,size(values,1));
-        end
-        start_idx = stop_idx + 1;
-    end
-end
-
-end %end function
-
-function ptype_counts = local_ptype_counts(PTypeDist,numbersims)
-
-ptype_counts = floor(PTypeDist(:)'*numbersims);
-extra_sims = numbersims-sum(ptype_counts);
-ptype_counts(1:extra_sims)=ptype_counts(1:extra_sims)+1;
-
-end %end function
-
-function ptype_names = local_ptype_names(N_i)
-
-ptype_names = cell(1,N_i);
-for ii=1:N_i
-    if ii<10
-        ptype_names{ii} = ['ptype00',num2str(ii)];
-    elseif ii<100
-        ptype_names{ii} = ['ptype0',num2str(ii)];
-    else
-        ptype_names{ii} = ['ptype',num2str(ii)];
-    end
-end
+AgeStatsSim = panel_age_stats_ptype(SimPanelValues,Params.(PTypeDistName{1}),N_i);
 
 end %end function
