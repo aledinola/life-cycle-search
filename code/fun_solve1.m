@@ -192,7 +192,11 @@ end
 end %end function
 
 function AgeStatsSim = local_panel_age_stats(SimPanelValues,PTypeDist,N_i)
-
+% Purpose: This function takes as input SimPanelValues. Each field of SimPanelValues
+% is a panel dataset for a variable, so for example SimPanelValues.assets
+% is a [N_j,numbersims] matrix where 1st dim is simulated individuals and
+% 2nd dimension is age/time period. Hence to obtain a life cycle profile, 
+% we have to average over the 2nd dimension, omitting NaN values.   
 fn_names = fieldnames(SimPanelValues);
 ptype_names = local_ptype_names(N_i);
 ptype_counts = local_ptype_counts(PTypeDist,size(SimPanelValues.(fn_names{1}),2));
@@ -200,9 +204,14 @@ ptype_counts = local_ptype_counts(PTypeDist,size(SimPanelValues.(fn_names{1}),2)
 AgeStatsSim = struct();
 for ff=1:numel(fn_names)
     fn_name = fn_names{ff};
+    % values is [N_j,numbersims] 
     values = SimPanelValues.(fn_name);
+    % AgeStatsSim.(fn_name).Mean is vector [N_j,1]
     AgeStatsSim.(fn_name).Mean = mean(values,2,'omitnan')';
+    % convert to row vector to make it comformable to output of 
+    % LifeCycleProfiles_FHorz_Case1_PType
 
+    % The following is not very clear
     start_idx = 1;
     for ii=1:N_i
         stop_idx = start_idx + ptype_counts(ii) - 1;
