@@ -4,8 +4,12 @@ clearvars,clc,close all
 addpath(genpath('C:\Users\aledi\Documents\GitHub\VFIToolkit-matlab'))
 
 %% Order of variables in the toolkit
-% (d,a',a,semiz,z,j,i) = (s,a',a,l,g,z3,age,educ)
+% (d,a',a,semiz,z,j,i) = (s,a',a,l,g,age,educ)
 % There is no exogenous state z in this model.
+
+%% Interpolation
+opt.gridinterplayer = 1;
+opt.ngridinterp     = 15;
 
 %% Demographics and state-space dimensions
 % Model agents from age 20 to age 100, so there are 81 periods.
@@ -21,11 +25,10 @@ n_s     = 5;        % Search effort, decision d
 n_a     = 501;      % Endogenous asset holdings
 n_l     = 2;        % Employment states (l=0,1), semiz1
 n_g     = 3;        % Number of skills, semiz2
-n_z3    = 2;        % Number of semiz3
 N_j     = Params.J; % Number of periods in finite horizon
 N_i     = 2;        % Number of ptypes (education)
 
-% semiz = (l,g,z3) where l=employment, g=skill
+% semiz = (l,g) where l=employment and g=skill
 
 %% Economic parameters
 
@@ -115,18 +118,13 @@ if any(abs(sum(pi_l,2)-1)>1e-12,"all")
     error('Rows of pi_l must sum to one for every search choice.')
 end
 
-%% semiz3: check to test the case with 3 semi-exogenous states
-z3_grid = [0,1]';
-pi_z3   = [0.5, 0.5
-               0.95, 0.05];
-
-n_semiz = [n_l,n_g,n_z3];
+n_semiz = [n_l,n_g];
 plot_j = min(5,N_j);
 plot_i = 1;
 
 %% Solve with toolkit-based implementation
 start1 = tic;
-[V, pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,z3_grid,pi_l,pi_g,pi_z3,N_j,N_i);
+[V, pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt);
 time1 = toc(start1);
 
 % Check: pol_s(a,l,g,j,ptype) must be zero if l=1 (employed), for all

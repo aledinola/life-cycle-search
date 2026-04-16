@@ -1,4 +1,4 @@
-function [V,pol_s,pol_aprime,StatDist_out,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,z3_grid,pi_l,pi_g,pi_z3,N_j,N_i)
+function [V,pol_s,pol_aprime,StatDist_out,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt)
 % This function solves the lifecycle model using VFI toolkit
 % VFI-Toolkit model: finite horizon semi-exo, no d1, no z
 % The transition matrix of semiz is entered as an array in vfoptions.pi_semiz
@@ -7,16 +7,15 @@ function [V,pol_s,pol_aprime,StatDist_out,ValuesOnGrid,AllStats,AgeStats,SimPane
 % a        Current endogenous state       a
 % l        Employment state               semiz1
 % g        Skill level                    semiz2
-% z3       Extra variable                 semiz3
 % Choice variables:
 % s        Search effort                  d
 % aprime   Next-period endogenous state   aprime
 % ================================================
 % Outputs:
-% V(a,l,g,z3,j,i) stores the value function on the state grid.
-% pol_s(a,l,g,z3,j,i) stores the optimal search effort.
-% pol_aprime(a,l,g,z3,j,i) stores the optimal next-period asset choice in levels.
-% StatDist_out(a,l,g,z3,j,i) stores the agents distribution.
+% V(a,l,g,j,i) stores the value function on the state grid.
+% pol_s(a,l,g,j,i) stores the optimal search effort.
+% pol_aprime(a,l,g,j,i) stores the optimal next-period asset choice in levels.
+% StatDist_out(a,l,g,j,i) stores the agents distribution.
 % Toolkit functions called by fun_solve1:
 % - ValueFnIter_Case1_FHorz_PType
 % - PolicyInd2Val_Case1_FHorz_PType
@@ -29,7 +28,6 @@ n_a = length(a_grid);
 n_s = length(s_grid);
 n_l = length(l_grid);
 n_g = length(g_grid);
-n_z3 = length(z3_grid);
 
 %% Permanent types
 PTypeDistName = {'omega_i'};
@@ -42,18 +40,18 @@ if numel(Params.(PTypeDistName{1}))~=N_i
 end
 
 %% Create big transition matrix pi_semiz(semiz,semiz'|d,i)
-% where semiz = (l,g,z3), d = search effort, i is permanent type
+% where semiz = (l,g), d = search effort, i is permanent type
 
 % pi_semiz is now (semiz,semiz'|d,j,i)
-pi_semiz = create_pi_semiz(pi_l,pi_g,pi_z3,n_s,n_l,n_g,n_z3,N_j,N_i);
+pi_semiz = create_pi_semiz(pi_l,pi_g,n_s,n_l,n_g,N_j,N_i);
 
 % Switch to toolkit notation
 n_d     = n_s;       % Num points for grid decision d
 d_grid  = s_grid;    % Grid decision d --> semi-exo transitions
-n_semiz = [n_l,n_g,n_z3]; % semiz = (l,g,z3)
+n_semiz = [n_l,n_g]; % semiz = (l,g)
 
 % semiz_grid(semiz) OR semiz_grid(semiz,j) OR semiz_grid(semiz,j,ptype)
-semiz_grid = [l_grid;g_grid;z3_grid]; % semiz = (l,g,z3)
+semiz_grid = [l_grid;g_grid]; % semiz = (l,g)
 % I add age and type dimension to semiz (even if it is not needed)
 semiz_grid_J = zeros(sum(n_semiz),N_j,N_i);
 for ii=1:N_i
@@ -64,12 +62,17 @@ end
 
 vfoptions.n_semiz = n_semiz;
 % Stacked grid for semiz:
-vfoptions.semiz_grid = semiz_grid_J; % semiz = (l,g)
-vfoptions.pi_semiz    = pi_semiz; 
+vfoptions.semiz_grid      = semiz_grid_J; % semiz = (l,g)
+vfoptions.pi_semiz        = pi_semiz; 
+vfoptions.gridinterplayer = opt.gridinterplayer;
+vfoptions.ngridinterp     = opt.ngridinterp;
+
 simoptions.n_semiz    = vfoptions.n_semiz;
 simoptions.semiz_grid = vfoptions.semiz_grid;
 simoptions.pi_semiz   = vfoptions.pi_semiz;
 simoptions.d_grid     = d_grid;
+simoptions.gridinterplayer = vfoptions.gridinterplayer;
+simoptions.ngridinterp     = vfoptions.ngridinterp;
 
 n_z = 0;
 z_grid = [];
@@ -79,8 +82,8 @@ pi_z   = [];
 Discs={'beta'};
 
 % Use 'LifeCycleModel29_ReturnFn'
-ReturnFn = @(s,aprime,a,l,g,z3,agej,educ_i,Jr,r,w,ben,pens,gamma,B_s) ...
-    f_Return(s,aprime,a,l,g,z3,agej,educ_i,Jr,r,w,ben,pens,gamma,B_s);
+ReturnFn = @(s,aprime,a,l,g,agej,educ_i,Jr,r,w,ben,pens,gamma,B_s) ...
+    f_Return(s,aprime,a,l,g,agej,educ_i,Jr,r,w,ben,pens,gamma,B_s);
 
 %% Now solve the value function iteration problem, just to check that things are working before we go to General Equilbrium
  
@@ -90,30 +93,30 @@ tic;
 [V, Policy]=ValueFnIter_Case1_FHorz_PType(n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,pi_z,ReturnFn,Params,Discs,vfoptions);
 toc
 
-% V(a,semiz1,semiz2,semiz3,age,ptype)
+% V(a,semiz1,semiz2,age,ptype)
 size(V.ptype001)
 size(Policy.ptype001)
 
 % Convert policy indexes to values
 PolicyVals=PolicyInd2Val_Case1_FHorz_PType(Policy,n_d,n_a,n_z,N_j,d_grid,a_grid,vfoptions);
 
-V_out      = zeros(n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j,N_i);
-pol_s      = zeros(n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j,N_i);
-pol_aprime = zeros(n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j,N_i);
+V_out      = zeros(n_a,n_semiz(1),n_semiz(2),N_j,N_i);
+pol_s      = zeros(n_a,n_semiz(1),n_semiz(2),N_j,N_i);
+pol_aprime = zeros(n_a,n_semiz(1),n_semiz(2),N_j,N_i);
 PNames     = fieldnames(V);
 for ii=1:N_i
     name_i = PNames{ii};
-    V_out(:,:,:,:,:,ii)      = reshape(V.(name_i),[n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j]);
-    pol_s(:,:,:,:,:,ii)      = reshape(PolicyVals.(name_i)(1,:,:,:,:),[n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j]);
-    pol_aprime(:,:,:,:,:,ii) = reshape(PolicyVals.(name_i)(2,:,:,:,:),[n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j]);
+    V_out(:,:,:,:,ii)      = reshape(V.(name_i),[n_a,n_semiz(1),n_semiz(2),N_j]);
+    pol_s(:,:,:,:,ii)      = reshape(PolicyVals.(name_i)(1,:,:,:),[n_a,n_semiz(1),n_semiz(2),N_j]);
+    pol_aprime(:,:,:,:,ii) = reshape(PolicyVals.(name_i)(2,:,:,:),[n_a,n_semiz(1),n_semiz(2),N_j]);
 end
 V = V_out;
 
 %% Distribution
 disp('Start distribution in fun_solve1...')
 % Initial distribution of agents at birth (j=1)
-jequaloneDist = zeros(n_a,n_semiz(1),n_semiz(2),n_semiz(3)); 
-jequaloneDist(1,1,floor((n_semiz(2)+1)/2),1) = 1; 
+jequaloneDist = zeros(n_a,n_semiz(1),n_semiz(2)); 
+jequaloneDist(1,1,floor((n_semiz(2)+1)/2)) = 1; 
 AgeWeightsParamNames={'mewj'};
 
 StatDist=StationaryDist_Case1_FHorz_PType(jequaloneDist,AgeWeightsParamNames,PTypeDistName,Policy,n_d,n_a,n_z,N_j,N_i,pi_z,Params,simoptions);
@@ -121,21 +124,21 @@ StatDist=StationaryDist_Case1_FHorz_PType(jequaloneDist,AgeWeightsParamNames,PTy
 % Note: StatDist is the distribution conditional on ptype. To get the unconditional distribution, 
 % we need to weight by the ptype distribution (Params.omega_i) 
 PNames     = fieldnames(StatDist);
-StatDist_out = zeros(n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j,N_i);
+StatDist_out = zeros(n_a,n_semiz(1),n_semiz(2),N_j,N_i);
 for ii=1:N_i
     name_i = PNames{ii};
-    StatDist_out(:,:,:,:,:,ii) = Params.omega_i(ii)*reshape(StatDist.(name_i),[n_a,n_semiz(1),n_semiz(2),n_semiz(3),N_j]);
+    StatDist_out(:,:,:,:,ii) = Params.omega_i(ii)*reshape(StatDist.(name_i),[n_a,n_semiz(1),n_semiz(2),N_j]);
 end
 
 %% Functions to evaluate and conditional restrictions
-FnsToEvaluate.assets=@(s,aprime,a,l,g,z3) a; % a: current assets
-FnsToEvaluate.assets_next=@(s,aprime,a,l,g,z3) aprime; % a': next-period assets
-FnsToEvaluate.search=@(s,aprime,a,l,g,z3) s; % s: search effort
-FnsToEvaluate.empl  =@(s,aprime,a,l,g,z3) l; % l: employment (0-1)
-FnsToEvaluate.skill =@(s,aprime,a,l,g,z3) g; % g: skill
+FnsToEvaluate.assets=@(s,aprime,a,l,g) a; % a: current assets
+FnsToEvaluate.assets_next=@(s,aprime,a,l,g) aprime; % a': next-period assets
+FnsToEvaluate.search=@(s,aprime,a,l,g) s; % s: search effort
+FnsToEvaluate.empl  =@(s,aprime,a,l,g) l; % l: employment (0-1)
+FnsToEvaluate.skill =@(s,aprime,a,l,g) g; % g: skill
 
-simoptions.conditionalrestrictions.l0 = @(s,aprime,a,l,g,z3) l==0; % unemployed
-simoptions.conditionalrestrictions.l1 = @(s,aprime,a,l,g,z3) l==1; % employed
+simoptions.conditionalrestrictions.l0 = @(s,aprime,a,l,g) l==0; % unemployed
+simoptions.conditionalrestrictions.l1 = @(s,aprime,a,l,g) l==1; % employed
 
 %% Calculate values on the state grid
 ValuesOnGrid = EvalFnOnAgentDist_ValuesOnGrid_FHorz_Case1_PType(Policy,FnsToEvaluate,...
