@@ -1,4 +1,4 @@
-function [V,pol_s,pol_aprime,StatDist_out,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt)
+function [V,pol_s,pol_aprime,StatDist_out,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim,ToolkitTimes] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt)
 % This function solves the lifecycle model using VFI toolkit
 % VFI-Toolkit model: finite horizon semi-exo, no d1, no z
 % The transition matrix of semiz is entered as an array in vfoptions.pi_semiz
@@ -23,6 +23,8 @@ function [V,pol_s,pol_aprime,StatDist_out,ValuesOnGrid,AllStats,AgeStats,SimPane
 % - ValuesOnGrid: EvalFnOnAgentDist_ValuesOnGrid_FHorz_Case1_PType
 % - AllStats:     EvalFnOnAgentDist_AllStats_FHorz_Case1_PType
 % - AgeStats:     LifeCycleProfiles_FHorz_Case1_PType
+
+ToolkitTimes = struct();
 
 n_a = length(a_grid);
 n_s = length(s_grid);
@@ -89,16 +91,18 @@ ReturnFn = @(s,aprime,a,l,g,agej,educ_i,Jr,r,w,ben,pens,gamma,B_s) ...
  
 disp('Start VFI in fun_solve1...')
 vfoptions.verbose=1;
-tic;
+start_vfi = tic;
 [V, Policy]=ValueFnIter_Case1_FHorz_PType(n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,pi_z,ReturnFn,Params,Discs,vfoptions);
-toc
+ToolkitTimes.vfi = toc(start_vfi);
 
 % V(a,semiz1,semiz2,age,ptype)
 size(V.ptype001)
 size(Policy.ptype001)
 
 % Convert policy indexes to values
+start_policy = tic;
 PolicyVals=PolicyInd2Val_Case1_FHorz_PType(Policy,n_d,n_a,n_z,N_j,d_grid,a_grid,vfoptions);
+ToolkitTimes.policy_values = toc(start_policy);
 
 V_out      = zeros(n_a,n_semiz(1),n_semiz(2),N_j,N_i);
 pol_s      = zeros(n_a,n_semiz(1),n_semiz(2),N_j,N_i);
@@ -119,7 +123,9 @@ jequaloneDist = zeros(n_a,n_semiz(1),n_semiz(2));
 jequaloneDist(1,1,floor((n_semiz(2)+1)/2)) = 1; 
 AgeWeightsParamNames={'mewj'};
 
+start_distribution = tic;
 StatDist=StationaryDist_Case1_FHorz_PType(jequaloneDist,AgeWeightsParamNames,PTypeDistName,Policy,n_d,n_a,n_z,N_j,N_i,pi_z,Params,simoptions);
+ToolkitTimes.distribution = toc(start_distribution);
 
 % Note: StatDist is the distribution conditional on ptype. To get the unconditional distribution, 
 % we need to weight by the ptype distribution (Params.omega_i) 
@@ -141,20 +147,26 @@ simoptions.conditionalrestrictions.l0 = @(s,aprime,a,l,g) l==0; % unemployed
 simoptions.conditionalrestrictions.l1 = @(s,aprime,a,l,g) l==1; % employed
 
 %% Calculate values on the state grid
+start_values_on_grid = tic;
 ValuesOnGrid = EvalFnOnAgentDist_ValuesOnGrid_FHorz_Case1_PType(Policy,FnsToEvaluate,...
     Params,n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,simoptions);
+ToolkitTimes.values_on_grid = toc(start_values_on_grid);
 
 %% Calculate statistics unconditional on age
 % NOTE: We need only averages, so we add option to simoptions
 simoptions.whichstats = zeros(7,1);
 simoptions.whichstats(1) = 1; % only Mean
 
+start_all_stats = tic;
 AllStats = EvalFnOnAgentDist_AllStats_FHorz_Case1_PType(StatDist,Policy,FnsToEvaluate,...
     Params,n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,simoptions);
+ToolkitTimes.all_stats = toc(start_all_stats);
 
 %% Calculate the life-cycle profiles using the distribution StatDist
+start_age_stats = tic;
 AgeStats=LifeCycleProfiles_FHorz_Case1_PType(StatDist,Policy,FnsToEvaluate,...
     Params,n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,simoptions);
+ToolkitTimes.age_stats = toc(start_age_stats);
 
 %% Generate a simulated panel and from there life cycle profiles
 
@@ -164,7 +176,11 @@ simoptions_panel.pi_semiz = vfoptions.pi_semiz;
 simoptions_panel.alreadygridvals_semiexo = 0;
 simoptions_panel.numbersims = 5000;
 simoptions_panel.simperiods = N_j;
+start_panel = tic;
 SimPanelValues=SimPanelValues_FHorz_Case1_PType(jequaloneDist,PTypeDistName,Policy,FnsToEvaluate,Params,n_d,n_a,n_z,N_j,N_i,d_grid,a_grid,z_grid,pi_z,simoptions_panel);
 AgeStatsSim = panel_age_stats_ptype(SimPanelValues,Params.(PTypeDistName{1}),N_i);
+ToolkitTimes.sim_panel_and_age_stats = toc(start_panel);
+ToolkitTimes.total_subparts = ToolkitTimes.vfi + ToolkitTimes.policy_values + ToolkitTimes.distribution + ...
+    ToolkitTimes.values_on_grid + ToolkitTimes.all_stats + ToolkitTimes.age_stats + ToolkitTimes.sim_panel_and_age_stats;
 
 end %end function

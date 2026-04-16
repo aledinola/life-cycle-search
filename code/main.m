@@ -8,7 +8,7 @@ addpath(genpath('C:\Users\aledi\Documents\GitHub\VFIToolkit-matlab'))
 % There is no exogenous state z in this model.
 
 %% Interpolation
-opt.gridinterplayer = 1;
+opt.gridinterplayer = 0;
 opt.ngridinterp     = 15;
 
 %% Demographics and state-space dimensions
@@ -124,7 +124,7 @@ plot_i = 1;
 
 %% Solve with toolkit-based implementation
 start1 = tic;
-[V, pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt);
+[V, pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats,SimPanelValues,AgeStatsSim,ToolkitTimes] = fun_solve1(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt);
 time1 = toc(start1);
 
 % Check: pol_s(a,l,g,j,ptype) must be zero if l=1 (employed), for all
@@ -135,10 +135,18 @@ end
 
 %% Solve with direct MATLAB implementation
 start2 = tic;
-[V2,pol_s2,pol_aprime2,StatDist2,ValuesOnGrid2,AllStats2,AgeStats2] = fun_solve2(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i);
+[V2,pol_s2,pol_aprime2,StatDist2,ValuesOnGrid2,AllStats2,AgeStats2] = fun_solve2(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt);
 time2 = toc(start2);
 
 fprintf('Time method 1 (GPU Toolkit): %f \n',time1)
+fprintf('  Toolkit VFI:                     %f \n',ToolkitTimes.vfi)
+fprintf('  Toolkit PolicyInd2Val:           %f \n',ToolkitTimes.policy_values)
+fprintf('  Toolkit Distribution:            %f \n',ToolkitTimes.distribution)
+fprintf('  Toolkit ValuesOnGrid:            %f \n',ToolkitTimes.values_on_grid)
+fprintf('  Toolkit AllStats:                %f \n',ToolkitTimes.all_stats)
+fprintf('  Toolkit AgeStats:                %f \n',ToolkitTimes.age_stats)
+fprintf('  Toolkit SimPanel+AgeStatsSim:    %f \n',ToolkitTimes.sim_panel_and_age_stats)
+fprintf('  Toolkit Sum of subparts:         %f \n',ToolkitTimes.total_subparts)
 fprintf('Time method 2 (CPU)        : %f \n',time2)
 
 err_V = max(abs(V(:)-V2(:)));

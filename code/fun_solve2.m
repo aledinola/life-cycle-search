@@ -1,4 +1,4 @@
-function [V,pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats] = fun_solve2(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i)
+function [V,pol_s,pol_aprime,StatDist,ValuesOnGrid,AllStats,AgeStats] = fun_solve2(Params,a_grid,s_grid,l_grid,g_grid,pi_l,pi_g,N_j,N_i,opt)
 % Solve the finite-horizon life-cycle problem without using the VFI Toolkit.
 % ================================================
 % State variables:
@@ -29,22 +29,23 @@ disp('Start VFI in fun_solve2...')
 V          = zeros(n_a,n_l,n_g,N_j,N_i);
 pol_s_idx  = zeros(n_a,n_l,n_g,N_j,N_i);
 pol_s      = zeros(n_a,n_l,n_g,N_j,N_i);
-pol_aprime_idx = zeros(n_a,n_l,n_g,N_j,N_i);
+pol_aprime_left_idx = zeros(n_a,n_l,n_g,N_j,N_i);
+pol_aprime_layer_idx = ones(n_a,n_l,n_g,N_j,N_i);
 pol_aprime = zeros(n_a,n_l,n_g,N_j,N_i);
 
 Params_ii = Params;
 
 % Loop over fixed types
 for ii=1:N_i
-    % pi_l(:,:,s_c,j_c,i_c)
     pi_l_ii = pi_l(:,:,:,:,ii);
     Params_ii.educ_i = Params.educ_i(ii);
-    [V_ii,pol_s_idx_ii,pol_s_ii,pol_aprime_idx_ii,pol_aprime_ii] = fun_vfi_given_ptype(n_a,n_s,n_l,n_g,N_j,...
-        a_grid,s_grid,l_grid,g_grid,pi_l_ii,pi_g,Params_ii);
+    [V_ii,pol_s_idx_ii,pol_s_ii,pol_aprime_left_idx_ii,pol_aprime_layer_idx_ii,pol_aprime_ii] = fun_vfi_given_ptype(n_a,n_s,n_l,n_g,N_j,...
+        a_grid,s_grid,l_grid,g_grid,pi_l_ii,pi_g,Params_ii,opt);
     V(:,:,:,:,ii)          = V_ii;
     pol_s_idx(:,:,:,:,ii)  = pol_s_idx_ii;
     pol_s(:,:,:,:,ii)      = pol_s_ii;
-    pol_aprime_idx(:,:,:,:,ii) = pol_aprime_idx_ii;
+    pol_aprime_left_idx(:,:,:,:,ii) = pol_aprime_left_idx_ii;
+    pol_aprime_layer_idx(:,:,:,:,ii) = pol_aprime_layer_idx_ii;
     pol_aprime(:,:,:,:,ii) = pol_aprime_ii;
 end
 
@@ -66,14 +67,24 @@ for ii=1:N_i
             for l_c=1:n_l
                 for a_c=1:n_a
                     s_c_opt = pol_s_idx(a_c,l_c,g_c,jj,ii);
-                    aprime_c_opt = pol_aprime_idx(a_c,l_c,g_c,jj,ii);
+                    aprime_left_c_opt = pol_aprime_left_idx(a_c,l_c,g_c,jj,ii);
+                    aprime_layer_c_opt = pol_aprime_layer_idx(a_c,l_c,g_c,jj,ii);
+                    prob_aprime_upper = (aprime_layer_c_opt-1)/(opt.ngridinterp+1);
+                    prob_aprime_lower = 1-prob_aprime_upper;
+                    aprime_upper_c_opt = min(aprime_left_c_opt+1,n_a);
                     prob_l = pi_l(l_c,:,s_c_opt,jj,ii);
                     prob_g = pi_g(g_c,:,l_c);
                     for lp_c=1:n_l
                         for gp_c=1:n_g
-                            StatDist(aprime_c_opt,lp_c,gp_c,jj+1,ii)=...
-                                StatDist(aprime_c_opt,lp_c,gp_c,jj+1,ii)+...
-                                prob_l(lp_c)*prob_g(gp_c)*StatDist(a_c,l_c,g_c,jj,ii);
+                            transition_mass = prob_l(lp_c)*prob_g(gp_c)*StatDist(a_c,l_c,g_c,jj,ii);
+                            StatDist(aprime_left_c_opt,lp_c,gp_c,jj+1,ii)=...
+                                StatDist(aprime_left_c_opt,lp_c,gp_c,jj+1,ii)+...
+                                prob_aprime_lower*transition_mass;
+                            if prob_aprime_upper>0
+                                StatDist(aprime_upper_c_opt,lp_c,gp_c,jj+1,ii)=...
+                                    StatDist(aprime_upper_c_opt,lp_c,gp_c,jj+1,ii)+...
+                                    prob_aprime_upper*transition_mass;
+                            end
                         end
                     end
                 end %end a
